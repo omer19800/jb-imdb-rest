@@ -3,8 +3,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 import datetime
 from imdb_app.models import Movie, Actor, MovieActor, Rating
-
-
+from imdb_app.validators import *
 # class MovieSerializer(serializers.Serializer):
 #     name = serializers.CharField()
 #     release_year = serializers.IntegerField()
@@ -27,9 +26,20 @@ class DetailedMovieSerializer(serializers.ModelSerializer):
 
 
 class ActorSerializer(serializers.ModelSerializer):
+    # birth_year = serializers.IntegerField(required=True, validators=[MinValueValidator])
+
     class Meta:
         model = Actor
         fields = '__all__'
+        extra_kwargs = {
+            'birth_year': {
+                'required': False,
+                'validators': [MinAgeValidator(5)]
+            }
+            # 'id':{
+            #     'read_only':True #Done by default by django
+            # }
+        }
 
 
 class CastSerializer(serializers.ModelSerializer):
@@ -66,17 +76,21 @@ class CreateMovieSerializer(serializers.ModelSerializer):
         if attrs['release_year'] <= 1920 and attrs['duration_in_min'] >= 60:
             raise ValidationError('Old movies supposed to me short')
         return attrs
-class ActorSerializer(serializers.ModelSerializer):
+
+
+
+class CreateActorSerializers(serializers.ModelSerializer):
     class Meta:
         model = Actor
-        fields = '__all__'
-        depth = 1
+        fields = ['name', 'birth_year']
+        extra_kwargs = {
+            'id': {'read_only': True}
+        }
 
     def validate(self, attrs):
-        if datetime.date.year(attrs['birth_year']) > datetime.date.year(datetime.date.today()) or datetime.date.year(attrs['birth_year']) < datetime.date.year(datetime.date.today()) - 5:
-            raise ValidationError("Actor age cannot be larger than current year or less than 5 years old")
+        # if datetime.date.year(attrs['birth_year']) > datetime.date.year(datetime.date.today()) or datetime.date.year(attrs['birth_year']) < datetime.date.year(datetime.date.today()) - 5:
+        if datetime.date.today().year - attrs['birth_year'] < 5:
+            raise ValidationError("Actor age cannot be less than 5 years old or born in the future")
         elif (attrs['name'] is None) or str(attrs['name']).isdigit():
             raise ValidationError("Actor name cannot be empty or a number")
         return attrs
-
-
